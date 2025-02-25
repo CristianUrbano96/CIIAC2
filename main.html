@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de Cuadros Avanzado</title>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100%;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .active {
+      display: flex;
+    }
+
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .game-question {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .progress {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    .game-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      width: 80%;
+    }
+
+    .bar-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 40px;
+    }
+
+    .bar {
+      width: 100px;
+      height: 500px;
+      border: 1px solid #000;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      transition: background-color 0.3s ease;
+    }
+
+    .inner-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .box {
+      width: 20px;
+      height: 20px;
+      background-color: #4CAF50;
+      margin: 2px;
+    }
+
+    .bar.correct {
+      background-color: #A5D6A7;  /* Verde claro */
+    }
+
+    .bar.incorrect {
+      background-color: #EF9A9A;  /* Rojo claro */
+    }
+
+    .count {
+      font-size: 24px;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    label {
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Pantalla 1: Configuración del Juego -->
+  <div class="screen active" id="settingsScreen">
+    <h1>Selecciona la Dificultad</h1>
+    <div>
+      <label><input type="radio" name="difficulty" value="easy"> Fácil</label>
+      <label><input type="radio" name="difficulty" value="medium"> Media</label>
+      <label><input type="radio" name="difficulty" value="hard"> Difícil</label>
+    </div>
+
+    <h1>Selecciona el Tipo de Palabra</h1>
+    <div>
+      <label><input type="radio" name="wordType" value="mas-menos"> Más/Menos</label>
+      <label><input type="radio" name="wordType" value="mayor-menor"> Mayor/Menor</label>
+    </div>
+
+    <h1>Selecciona el Tipo de Juego</h1>
+    <div>
+      <label><input type="radio" name="gameType" value="plus"> + </label>
+      <label><input type="radio" name="gameType" value="minus"> - </label>
+      <label><input type="radio" name="gameType" value="plus-minus"> + y - </label>
+    </div>
+
+    <button onclick="startGame()">Iniciar Juego</button>
+  </div>
+
+  <!-- Pantalla 2: Juego -->
+  <div class="screen" id="gameScreen">
+    <h2 class="game-question" id="gameQuestion"></h2>
+    <div class="progress" id="progressTracker">Progreso: 0/10</div>
+    <div class="game-container">
+      <!-- Barra Izquierda -->
+      <div class="bar-container" onclick="checkAnswer('left')">
+        <div class="bar" id="leftBar">
+          <div class="inner-bar" id="leftBarContent"></div>
+        </div>
+        <div class="count" id="leftCount">0</div>
+      </div>
+
+      <!-- Barra Derecha -->
+      <div class="bar-container" onclick="checkAnswer('right')">
+        <div class="bar" id="rightBar">
+          <div class="inner-bar" id="rightBarContent"></div>
+        </div>
+        <div class="count" id="rightCount">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla 3: Resultados -->
+  <div class="screen" id="resultScreen">
+    <h1 id="resultMessage"></h1>
+    <button onclick="restartGame()">Jugar de Nuevo</button>
+  </div>
+
+  <script>
+    let selectedDifficulty = '';
+    let selectedWordType = '';
+    let selectedGameType = '';
+    let leftCount = 0;
+    let rightCount = 0;
+    let correctAnswers = 0;
+    let currentQuestionAnsweredCorrectly = false;
+
+    // Cambiar entre pantallas
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    // Iniciar juego según la configuración
+    function startGame() {
+      const difficultyOption = document.querySelector('input[name="difficulty"]:checked');
+      const wordTypeOption = document.querySelector('input[name="wordType"]:checked');
+      const gameTypeOption = document.querySelector('input[name="gameType"]:checked');
+
+      if (!difficultyOption || !wordTypeOption || !gameTypeOption) {
+        alert('Por favor selecciona todas las opciones antes de continuar.');
+        return;
+      }
+
+      selectedDifficulty = difficultyOption.value;
+      selectedWordType = wordTypeOption.value;
+      selectedGameType = gameTypeOption.value;
+      correctAnswers = 0;
+
+      showScreen('gameScreen');
+      updateProgress();
+      generateBars();
+      setQuestion();
+    }
+
+    // Actualizar el progreso
+    function updateProgress() {
+      document.getElementById('progressTracker').textContent = `Progreso: ${correctAnswers}/10`;
+    }
+
+    // Generar las barras con valores válidos
+    function generateBars() {
+      const leftBarContent = document.getElementById('leftBarContent');
+      const rightBarContent = document.getElementById('rightBarContent');
+
+      leftBarContent.innerHTML = '';
+      rightBarContent.innerHTML = '';
+
+      let difference = getDifferenceByDifficulty();
+
+      let attempts = 0;
+      let valid = false;
+
+      while (!valid && attempts < 100) {
+        attempts++;
+        leftCount = getRandomInt(1, 20);
+
+        if (Math.random() > 0.5) {
+          rightCount = leftCount + difference;
+        } else {
+          rightCount = leftCount - difference;
+        }
+
+        valid = rightCount >= 1 && rightCount <= 20 && leftCount !== rightCount;
+      }
+
+      if (!valid) {
+        alert("No se pudo generar una combinación válida. Intenta de nuevo.");
+        return;
+      }
+
+      // Generar cuadros para la barra izquierda
+      for (let i = 0; i < leftCount; i++) {
+        const box = document.createElement('div');
+        box.classList.add('box');
+        leftBarContent.appendChild(box);
+      }
+
+      // Generar cuadros para la barra derecha
+      for (let i = 0; i < rightCount; i++) {
+        const box = document.createElement('div');
+        box.classList.add('box');
+        rightBarContent.appendChild(box);
+      }
+
+      document.getElementById('leftCount').textContent = leftCount;
+      document.getElementById('rightCount').textContent = rightCount;
+      currentQuestionAnsweredCorrectly = false; // Resetear estado de la pregunta
+    }
+
+    // Definir la pregunta según el tipo de palabra y juego
+    function setQuestion() {
+      const questionElement = document.getElementById('gameQuestion');
+
+      let askType;
+
+        if (selectedGameType === 'plus-minus') {
+        askType = Math.random() > 0.5 ? '+' : '-';
+        } else if (selectedGameType === 'plus') {
+        askType = '+';
+        } else {
+        askType = '-';
+        }
+
+      if (selectedWordType === 'mayor-menor') {
+        questionElement.textContent = askType === '+' ? '¿Cuál es mayor?' : '¿Cuál es menor?';
+      } else {
+        questionElement.textContent = askType === '+' ? '¿Cuál tiene más?' : '¿Cuál tiene menos?';
+      }
+    }
+
+    // Verificar la respuesta
+    function checkAnswer(selectedBar) {
+      const leftBar = document.getElementById('leftBar');
+      const rightBar = document.getElementById('rightBar');
+      leftBar.classList.remove('correct', 'incorrect');
+      rightBar.classList.remove('correct', 'incorrect');
+
+      let correctAnswer = '';
+
+      const questionText = document.getElementById('gameQuestion').textContent;
+      if (questionText.includes('mayor') || questionText.includes('más')) {
+        correctAnswer = leftCount > rightCount ? 'left' : 'right';
+      } else {
+        correctAnswer = leftCount < rightCount ? 'left' : 'right';
+      }
+
+      if (selectedBar === correctAnswer) {
+        document.getElementById(selectedBar + 'Bar').classList.add('correct');
+        if (!currentQuestionAnsweredCorrectly) {
+          correctAnswers++;
+          currentQuestionAnsweredCorrectly = true;
+        }
+      } else {
+        document.getElementById(selectedBar + 'Bar').classList.add('incorrect');
+      }
+
+      updateProgress();
+
+      setTimeout(() => {
+        leftBar.classList.remove('correct', 'incorrect');
+        rightBar.classList.remove('correct', 'incorrect');
+
+        if (currentQuestionAnsweredCorrectly) {
+          if (correctAnswers === 10) {
+            showScreen('resultScreen');
+            document.getElementById('resultMessage').textContent = '¡Felicidades! Completaste las 10 preguntas 🎉';
+          } else {
+            generateBars();
+            setQuestion();
+          }
+        }
+      }, 1000);
+    }
+
+    // Obtener diferencia según la dificultad
+    function getDifferenceByDifficulty() {
+      if (selectedDifficulty === 'easy') return getRandomInt(10, 19);
+      if (selectedDifficulty === 'medium') return getRandomInt(4, 9);
+      return getRandomInt(1, 3);
+    }
+
+    // Generar un número aleatorio
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // Reiniciar el juego
+    function restartGame() {
+      showScreen('settingsScreen');
+    }
+  </script>
+</body>
+</html>
